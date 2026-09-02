@@ -9,7 +9,7 @@
 
 - name: Configure ntp file
   template:
-    src: ntp.conf.j2
+    src: ntp.config.j2
     dest: /etc/ntp.conf
   tags: ntp
   notify: restart ntp
