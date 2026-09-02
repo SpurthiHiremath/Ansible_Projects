@@ -1,0 +1,118 @@
+---
+- name: Create backup directory
+  file:
+    path: "{{ web_backup_directory }}"
+    state: directory
+    mode: "0755"
+
+- name: Check whether the existing application file exists
+  stat:
+    path: "{{ web_root }}/index.html"
+  register: existing_application
+
+- name: Deploy and validate web application
+  block:
+    - name: Install Apache
+      yum:
+        name: "{{ web_package }}"
+        state: present
+      register: apache_installation
+      retries: 3
+      delay: 5
+      until: apache_installation is succeeded
+
+    - name: Create web root directory
+      file:
+        path: "{{ web_root }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Back up existing application file
+      copy:
+        src: "{{ web_root }}/index.html"
+        dest: "{{ web_backup_directory }}/index.html.backup"
+        remote_src: true
+        mode: "0644"
+      when: existing_application.stat.exists
+
+    - name: Deploy application template
+      template:
+        src: index.html.j2
+        dest: "{{ web_root }}/index.html"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart web server
+
+    - name: Start and enable Apache
+      service:
+        name: "{{ web_service }}"
+        state: started
+        enabled: true
+
+    - name: Wait until the application returns HTTP 200
+      uri:
+        url: "{{ web_health_url }}"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: health_check
+      retries: "{{ web_health_retries }}"
+      delay: "{{ web_health_delay }}"
+      until:
+        - health_check.status == 200
+        - "'Managed by Ansible' in health_check.content"
+
+    - name: Display health-check result
+      debug:
+        msg: >-
+          Application on {{ inventory_hostname }} is healthy.
+          HTTP status: {{ health_check.status }}
+
+  rescue:
+    - name: Display deployment failure
+      debug:
+        msg: >-
+          Deployment failed on {{ inventory_hostname }}.
+          The previous application will be restored when a backup exists.
+
+    - name: Check whether a backup exists
+      stat:
+        path: "{{ web_backup_directory }}/index.html.backup"
+      register: application_backup
+
+    - name: Restore the previous application
+      copy:
+        src: "{{ web_backup_directory }}/index.html.backup"
+        dest: "{{ web_root }}/index.html"
+        remote_src: true
+        mode: "0644"
+      when: application_backup.stat.exists
+      notify: restart web server
+
+    - name: Remove failed deployment when no backup exists
+      file:
+        path: "{{ web_root }}/index.html"
+        state: absent
+      when: not application_backup.stat.exists
+
+    - name: Apply rollback handler
+      meta: flush_handlers
+
+    - name: Mark this host as failed
+      fail:
+        msg: "Deployment failed and rollback was attempted on {{ inventory_hostname }}"
+
+  always:
+    - name: Record deployment completion time
+      command: date --iso-8601=seconds
+      register: deployment_time
+      changed_when: false
+
+    - name: Display final deployment status
+      debug:
+        msg: >-
+          Deployment attempt on {{ inventory_hostname }}
+          finished at {{ deployment_time.stdout }}.
