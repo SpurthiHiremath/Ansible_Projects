@@ -1,0 +1,37 @@
+---
+- name: Deploy web application using roles
+  hosts: webservers
+  become: true
+
+  # Process two servers at a time.
+  serial: 2
+
+  # Stop the play if more than 30% of a batch fails.
+  max_fail_percentage: 30
+
+  pre_tasks:
+    - name: Wait for the server to become reachable
+      wait_for_connection:
+        timeout: 10
+      register: connection_result
+      retries: 3
+      delay: 5
+      until: connection_result is succeeded
+
+    - name: Display current deployment batch
+      debug:
+        msg: "Beginning deployment on {{ inventory_hostname }}"
+
+  roles:
+    - role: common
+      tags:
+        - common
+
+    - role: webserver
+      tags:
+        - webserver
+
+  post_tasks:
+    - name: Display deployment result
+      debug:
+        msg: "Deployment completed successfully on {{ inventory_hostname }}"
