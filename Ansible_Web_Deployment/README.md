@@ -7,8 +7,8 @@ The serial: 2 setting updates only two servers at a time. The health check uses 
 and delay to repeat the check, and until to continue until the application responds successfully.
 If any task inside the block fails, the rescue section attempts to restore the previous application and reports the failure. 
 The always section runs regardless of success or failure and records that the deployment attempt has finished.
-**
-Execution**
+
+**Execution**
 
 ansible-playbook site.yml --syntax-check
 
