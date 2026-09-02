@@ -1,0 +1,15 @@
+---
+- name: Install common packages
+  yum:
+    name:
+      - curl
+      - git
+    state: present
+  register: common_package_result
+  retries: 3
+  delay: 5
+  until: common_package_result is succeeded
+
+- name: Display package installation result
+  debug:
+    msg: "Common packages are available on {{ inventory_hostname }}"
