@@ -1,0 +1,9 @@
+---
+web_package: httpd
+web_service: httpd
+web_port: 80
+web_root: /var/www/html
+web_health_url: "http://127.0.0.1:{{ web_port }}/index.html"
+web_health_retries: 5
+web_health_delay: 10
+web_backup_directory: /var/backups/ansible-web
