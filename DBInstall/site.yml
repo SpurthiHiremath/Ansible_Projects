@@ -1,0 +1,9 @@
+---
+- name: Configure MySQL servers
+  hosts: all
+  become: true
+  gather_facts: true
+  serial: 2
+
+  roles:
+    - role: mysql
