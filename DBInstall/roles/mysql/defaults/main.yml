@@ -1,0 +1,11 @@
+---
+mysql_packages:
+  - mysql-server
+  - python3-pymysql
+
+mysql_service_name: mysql
+mysql_database: my_database
+mysql_user: my_user
+mysql_password: user_password
+mysql_backup_directory: /var/backups/mysql
+mysql_port: 3306
